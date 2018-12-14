@@ -25,7 +25,6 @@ export const useStoredState = ({
     async value => {
       try {
         const update = { value: { ...v.value, ...value }, loading: false };
-        console.log(v, value);
         setState(update);
         await ls.setItem(key, update.value);
       } catch (e) {

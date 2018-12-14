@@ -1,11 +1,15 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect } from "react";
 import styled, { ThemeProvider } from "styled-components";
 import { Text, variants } from "./components/Text";
+import { SectionTitle } from "./components/SectionTitle";
+import { Editor } from "./components/Editor";
+import { NotesColumn } from "./components/NotesColumn";
 import { useStoredState } from "./util/useStoredState";
 import uuid from "uuid/v4";
 import moment from "moment";
 import get from "lodash/get";
 import orderBy from "lodash/orderBy";
+import { Sidebar } from "./components/Sidebar";
 const theme = {
   textDefault: "rgba(0, 0, 0, .87)",
   textLight: "rgba(0, 0, 0, .52)"
@@ -16,16 +20,9 @@ const AppContainer = styled.div`
   height: 100vh;
   opacity: ${props => (props.loading ? 0 : 1)};
   transition: opacity 50ms;
-  background: rgba(18, 18, 18, 1);
-  filter: invert(0);
-`;
-
-const Box = styled.div`
   display: flex;
-  width: ${props => props.width};
-  height: ${props => props.height};
-  flex-direction: ${props => props.flexDirection || "row"};
-  /* flex-shrink: 0; */
+  flex-direction: column;
+  background: rgba(18, 18, 18, 1);
 `;
 
 const UIRow = styled.div`
@@ -36,87 +33,19 @@ const UIRow = styled.div`
   color: ${props => props.theme.textLight};
 `;
 
-const SectionTitleContainer = styled.div`
-  padding: 0px 8px 8px;
-  /* height: 24px; */
-  align-items: center;
-  display: flex;
-  color: ${props => props.theme.textLight};
-  .action-button {
-    opacity: 1;
-    transition: all 100ms;
-    background: rgba(43, 138, 245, 1);
-  }
-`;
-
-const SectionTitle = ({ label, actionLabel, action, ...props }) => {
-  return (
-    <SectionTitleContainer {...props}>
-      <Text
-        ui
-        type="caption"
-        style={{ textTransform: "uppercase", fontWeight: 500 }}
-      >
-        {label}
-      </Text>
-      <div style={{ flex: 1 }} />
-      {actionLabel && (
-        <Text
-          ui
-          className="action-button"
-          type="caption"
-          style={{
-            textTransform: "uppercase",
-            fontWeight: 500,
-            color: "blue",
-            padding: "1px 4px",
-
-            borderRadius: 3
-          }}
-          color="white"
-          onClick={action}
-        >
-          {actionLabel}
-        </Text>
-      )}
-    </SectionTitleContainer>
-  );
-};
-
 const SidebarContainer = styled.div`
-  width: 500px;
-  height: 100vh;
-  background-color: rgba(255, 255, 255, 1);
+  background-color: rgba(252, 252, 252, 1);
+  width: 350px;
+  min-width: 350px;
+  height: 100%;
   overflow-y: scroll;
   cursor: default;
   user-select: none;
+  border-left: 1px solid rgba(218, 218, 218, 1);
   padding: 8px 0px;
 `;
 
 const loaded = (...args) => !args.filter(v => v).length;
-
-const Editor = styled.textarea.attrs(props => ({
-  style: { ...variants.body, ...props.style }
-}))`
-  background: white;
-  width: 100%;
-  height: 100%;
-  outline: none;
-  border: none;
-  resize: none;
-  padding: 8px 16px;
-  font-weight: 500;
-  color: rgba(0, 0, 0, 0.87) !important;
-  font-family: monaco;
-  /* font-size: 14px; */
-`;
-
-const TodoContainer = styled.div`
-  padding: 8px 8px;
-  display: flex;
-  justify-content: center;
-  flex-direction: column;
-`;
 
 const getItems = (noteState, useActiveId, c) => {
   const items = [];
@@ -167,7 +96,7 @@ const getTodos = (noteState, useActiveId) =>
 
 const useNoteUpdate = (noteState, setNoteState) => {
   return useCallback(
-    (value, id) => {
+    (value, id, setAsActive = false) => {
       const noteId = id || uuid();
       const currentNotes = id ? noteState.notes : [noteId, ...noteState.notes];
       const updatedAt = Date.now();
@@ -180,7 +109,7 @@ const useNoteUpdate = (noteState, setNoteState) => {
 
       setNoteState({
         notes: currentNotes,
-        activeNoteId: noteState.activeNoteId || noteId,
+        activeNoteId: setAsActive ? noteId : noteState.activeNoteId || noteId,
         contentById: {
           ...noteState.contentById,
           [noteId]: value
@@ -194,7 +123,7 @@ const useNoteUpdate = (noteState, setNoteState) => {
         }
       });
     },
-    [noteState]
+    [noteState, setNoteState]
   );
 };
 
@@ -206,24 +135,35 @@ const Tag = styled.div.attrs(props => ({
 }))`
   padding: 1px 4px;
   border-radius: 3px;
-  /* border-color: rgba(27, 127, 251, 1); */
-  border: 1px solid rgba(46, 50, 53, 1);
-  margin: 4px;
-  background: ${props => (props.isAssignee ? "rgba(46, 50, 53, 1)" : null)};
+  border: 1px solid;
+  border-color: ${props =>
+    props.isAssignee ? "rgba(50, 123, 185, 1)" : " rgba(46, 50, 53, 1)"};
+  margin-right: 4px;
+  background: ${props => (props.isAssignee ? "rgba(50, 123, 185, 1)" : null)};
   color: ${props => (props.isAssignee ? "white" : "black")};
   display: inline-block;
+`;
 
-  &:first-child {
-    margin-left: 0px;
-    margin-right: 0px;
-  }
+const TodoItemWrapper = styled.div`
+  padding: 8px;
+`;
+
+const TodoContainer = styled.div`
+  padding: 8px 8px;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
 `;
 
 const TodoItemContainer = styled.div`
   display: flex;
+  padding: 8;
+  /* border: 1px solid rgba(218, 218, 218, 1); */
+  border-radius: 3px;
+  overflow: hidden;
 
   &:hover {
-    background: rgba(0, 0, 0, 0.07);
+    background: rgba(245, 245, 245, 1);
   }
 `;
 
@@ -236,71 +176,64 @@ const TodoItem = ({
   complete
 }) => {
   return (
-    <TodoItemContainer style={{ display: "flex", opacity: complete ? 0.5 : 1 }}>
-      <div
-        style={{ display: "flex", alignItems: "center", padding: 8 }}
+    <TodoItemWrapper>
+      <TodoItemContainer
+        style={{ display: "flex", opacity: complete ? 0.5 : 1 }}
+      >
+        {/* <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          background: "black",
+          flex: 1,
+          maxWidth: 32
+        }}
         onClick={e => {
           e.preventDefault();
           e.stopPropagation();
           onComplete();
         }}
       >
-        <span className={`${complete ? "fas" : "far"} fa-square fa-fw`} />
-      </div>
-      <TodoContainer
-        onClick={onClick}
-        style={{
-          flex: 1
-        }}
-      >
-        <Text ui>{content}</Text>
-        <div style={{ paddingTop: 2, maxWidth: "100%" }}>
-          {assignee && (
-            <Tag
-              ui
-              type="caption"
-              style={{ fontWeight: "500" }}
-              isAssignee={true}
-            >
-              {assignee}
-            </Tag>
-          )}
-          {tags.map((tag, i) => {
-            return (
+        <span className={`${complete ? "fas" : "far"} fa-circle fa-fw`} />
+      </div> */}
+        <TodoContainer
+          onClick={onClick}
+          style={{
+            flex: 1
+          }}
+        >
+          <Text ui style={{ lineHeight: "1", paddingBottom: 4 }}>
+            {content}
+          </Text>
+          <div style={{ paddingTop: 2, maxWidth: "100%" }}>
+            {assignee && (
               <Tag
-                key={tag + i}
                 ui
                 type="caption"
                 style={{ fontWeight: "500" }}
+                isAssignee={true}
               >
-                {tag}
+                {assignee}
               </Tag>
-            );
-          })}
-        </div>
-      </TodoContainer>
-    </TodoItemContainer>
+            )}
+            {tags.map((tag, i) => {
+              return (
+                <Tag
+                  key={tag + i}
+                  ui
+                  type="caption"
+                  style={{ fontWeight: "500" }}
+                >
+                  {tag}
+                </Tag>
+              );
+            })}
+          </div>
+        </TodoContainer>
+      </TodoItemContainer>
+    </TodoItemWrapper>
   );
 };
-
-const NotebarContainer = styled.div`
-  width: 350px;
-  height: 100%;
-  background-color: rgba(255, 255, 255, 1);
-  overflow-y: scroll;
-  cursor: default;
-  user-select: none;
-  border-left: 1px solid rgba(218, 218, 218, 1);
-  padding: 8px 0px;
-`;
-
-const Note = styled.div`
-  padding: 4px 8px;
-  display: flex;
-  background: ${props => (props.selected ? "rgba(46, 50, 53, 1)" : null)};
-  color: ${props => (props.selected ? "white" : null)};
-  flex-direction: column;
-`;
 
 const TaskFilterInput = styled.input.attrs(props => ({
   style: { ...variants.caption, ...props.style }
@@ -311,6 +244,41 @@ const TaskFilterInput = styled.input.attrs(props => ({
   border: 1px solid rgba(46, 50, 53, 1);
   border-radius: 2px;
 `;
+
+const Toolbar = styled.div`
+  height: 40px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  background-color: rgba(237, 237, 237, 1);
+  border-bottom: 1px solid rgba(218, 218, 218, 1);
+`;
+
+const ToolbarButtonContainer = styled.div`
+  max-height: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  padding: 8px;
+  margin: 0px 8px;
+  border: 1px solid rgba(218, 218, 218, 1);
+  border-radius: 4px;
+  transition: all 100ms;
+  font-size: 0.8em;
+  &:hover {
+    box-shadow: 0px 0px 2px rgba(0, 0, 0, 0.27);
+  }
+`;
+
+const ToolbarButton = ({ icon, action }) => {
+  return (
+    <ToolbarButtonContainer onClick={action}>
+      <span className={`fa fa-fw ${icon}`} />
+    </ToolbarButtonContainer>
+  );
+};
 
 const App = () => {
   const [noteState, loadingNotes, setNoteState] = useStoredState({
@@ -378,54 +346,63 @@ const App = () => {
   const todo = getTodos(noteState, false).filter(n => {
     let include = tagFilterList.length === 0;
     tagFilterList.forEach(tagFilter => {
-      if (tagFilter === "" || n.tags.includes(tagFilter)) {
+      if (
+        tagFilter === "" ||
+        n.tags.includes(tagFilter) ||
+        n.assignee === tagFilter
+      ) {
         include = true;
       }
     });
     return include;
   });
+
   const completed = getCompleted(noteState, false).filter(n => {
     let include = tagFilterList.length === 0;
     tagFilterList.forEach(tagFilter => {
-      if (tagFilter === "" || n.tags.includes(tagFilter)) {
+      if (
+        tagFilter === "" ||
+        n.tags.includes(tagFilter) ||
+        n.assignee === tagFilter
+      ) {
         include = true;
       }
     });
     return include;
   });
-  console.log(tagFilterList);
 
-  // console.log(noteState);
+  const createNewNote = useCallback(() => setNoteValue("", null, true), [
+    setNoteValue
+  ]);
+
   return (
     <ThemeProvider theme={theme}>
       <AppContainer loading={!loaded(loadingNotes, loadingTagFilter)}>
-        <Box width="100%" height="100%" flexDirection="row">
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              width: "100%",
-              borderRight: "1px solid rgba(218, 218, 218, 1)"
-            }}
-          >
-            <UIRow
-              style={{
-                justifyContent: "center",
-                padding: 4,
-                height: 32,
-                background: "white",
-                fontWeight: "bold"
-              }}
-            >
-              <Text ui type="caption">
-                {date}
-              </Text>
-            </UIRow>
-            <Editor
-              value={content}
-              onChange={e => setNoteValue(e.target.value, activeNoteId)}
-            />
-          </div>
+        <div
+          style={{
+            display: "flex",
+            flex: 1,
+            height: "100%"
+          }}
+        >
+          <Sidebar createNewNote={createNewNote} />
+          <Editor
+            value={content}
+            date={date}
+            onChange={e => setNoteValue(e.target.value, activeNoteId)}
+          />
+          {/* <NotesColumn
+            notes={notes}
+            activeNoteId={activeNoteId}
+            onNoteClick={id =>
+              setNoteState({
+                activeNoteId: id
+              })
+            }
+            contentById={contentById}
+            metaById={metaById}
+          />
+
           <SidebarContainer>
             <SectionTitle label="Tasks" />
             <div style={{ padding: "0px 8px 8px" }}>
@@ -464,44 +441,8 @@ const App = () => {
                 />
               ))}
             </div>
-          </SidebarContainer>
-          <NotebarContainer>
-            <SectionTitle
-              label="Notes"
-              actionLabel="Create New Note"
-              action={() => setNoteValue("", null)}
-            />
-            {notes.map(id => {
-              return (
-                <Note
-                  key={id}
-                  selected={activeNoteId === id}
-                  onClick={() => {
-                    setNoteState({
-                      activeNoteId: id
-                    });
-                  }}
-                >
-                  <Text ui>
-                    {contentById[id]
-                      .split("\n")[0]
-                      .replace("+ ", "")
-                      .replace("- ", "").length
-                      ? contentById[id]
-                          .split("\n")[0]
-                          .replace("+ ", "")
-                          .replace("- ", "")
-                      : "New Note"}
-                  </Text>
-                  <div style={{ height: 4 }} />
-                  <Text type="caption">
-                    Edited: {moment(metaById[id].updatedAt).fromNow()}
-                  </Text>
-                </Note>
-              );
-            })}
-          </NotebarContainer>
-        </Box>
+          </SidebarContainer> */}
+        </div>
       </AppContainer>
     </ThemeProvider>
   );

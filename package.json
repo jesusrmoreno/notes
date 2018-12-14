@@ -2,12 +2,14 @@
   "name": "budget",
   "version": "0.1.0",
   "private": true,
+  "main": "public/electron.js",
   "dependencies": {
     "@nivo/bar": "^0.51.6",
     "@nivo/calendar": "^0.51.0",
     "@nivo/line": "^0.51.6",
     "crossfilter2": "^1.4.6",
     "csvtojson": "^2.0.8",
+    "electron-is-dev": "^1.0.1",
     "localforage": "^1.7.3",
     "moment": "^2.22.2",
     "papaparse": "^4.6.2",
@@ -23,7 +25,8 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "electron-dev": "electron ."
   },
   "eslintConfig": {
     "extends": "react-app"
@@ -33,5 +36,11 @@
     "not dead",
     "not ie <= 11",
     "not op_mini all"
-  ]
+  ],
+  "devDependencies": {
+    "concurrently": "^4.1.0",
+    "electron": "^3.0.11",
+    "electron-builder": "^20.38.3",
+    "wait-on": "^3.2.0"
+  }
 }
